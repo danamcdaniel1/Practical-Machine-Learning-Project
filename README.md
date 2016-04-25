@@ -1,5 +1,5 @@
-# Practical-Machine-Learning-Project
-This repository was created for the Practical Machine Learning class taught by Johns Hopkins University on Coursera.  The R files and compiled output used to analyze and model the Weight Lifting Excersize Dataset are presented here.
+### Practical-Machine-Learning-Project
+This repository was created for the Practical Machine Learning class taught by Johns Hopkins University on Coursera.  The R files and compiled output used to analyze and model the Weight Lifting Excersize Dataset are presented here.  Notice to readers:  the R Markdown file and HTML file represent the final analysis and other documents should be reviewed accordingly.  
 
 Background
 
