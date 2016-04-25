@@ -1,0 +1,88 @@
+---
+title: 'Practical Machine Learning:  Human Activity Recognition Project'
+author: "Dana McDaniel"
+date: "April 24, 2016"
+output: html_document
+---
+
+```{r setup, include = F}
+knitr::opts_chunk$set(cache = T, 
+                      warning = F, 
+                      message = F)
+library(corrplot)
+library(caret)
+library(randomForest)
+```
+
+###  Read and clean data
+
+The data provided online has a number of immediately concerning issues that must be addressed.  The most obvious is the large number of `NA` values in the 'derived' columns.  Derived columns will be colinear with other features in the dataset, and do not add value.  Finally, the first seven columns in the data set have personal information and timestamps that do not aid analysi.  These must all be removed from the data before proceeding.  Bear in mind that the `cleanData` function will be used on both the training data and the test data.  The test data appears to have an additional `problem_id` feature that cannot be identified and was removed for consistency purposes.
+
+``` {r load and clean}
+
+cleanData <- function(rawData){
+  # toss columns with NAs that affect train()
+  # columns 1:7 have personnel IDs and timestamps that don't help MLA
+  # numeric columns with #DIV/0! should be removed as well.
+
+  classe        <- rawData$classe
+  naColumns     <- colSums(is.na(rawData)) > 0
+  numericCols   <- sapply(rawData, is.numeric)
+  dropTheSeven  <- c(rep(F, 7), rep(T, ncol(rawData) - 7))
+  keepColumns   <- as.logical(!naColumns & numericCols & dropTheSeven)
+  keepRows      <- complete.cases(rawData)
+
+  df        <- rawData[, keepColumns]
+  df$classe <- classe
+  df
+}
+
+rawTrain  <- read.csv('C:/Users/mcdanid2/Desktop/pml-training.csv')
+trainData <- cleanData(rawTrain)
+rawTest   <- read.csv('C:/Users/mcdanid2/Desktop/pml-testing.csv')
+testData  <- cleanData(rawTest)
+testData  <- testData[, 1:(ncol(testData) - 1)]  # remove problem ID -- what is it?
+```
+
+### Building a Random Forest Model
+
+To better capture the complexity of the data in the machine learning applicaiton, a random forest model was selected.  The model uses default 10-fold cross validation to train against overfitting and sample error.  
+
+Prior to running the model, 80% of the data are partitioned into a training data set, and the remainder 20% is partitioned into a test data set.  These training and test data sets are not to be confused with the training and test data that are provided for the assignment.
+
+Using `nearZeroVar()`, we see that there are no features remaining with close to zero variance. In the following correlation plot, we also see that the remaining features generally do not cross correlate, indicating further processing is unnecessary.
+
+``` {r model}
+trainRows <- createDataPartition(trainData$classe, p = 0.8, list = F)
+training  <- trainData[trainRows, ]
+testing   <- trainData[-trainRows, ]
+featurePlot <- featurePlot(training[, -53], training$classe, "strip")
+
+# Do any features have close to zero variance -- no good as predictors?
+nearZeroVar(trainData[, -53])
+
+# factor correlations
+corrplot(corr = cor(trainData[, -53]), method = 'ellipse',
+         type = 'lower', diag = F, outline = F, main = "Factor correlations",
+         tl.pos = 'n')
+
+modelControl <- trainControl(method = 'cv', number = 10)
+
+modFit            <- train(classe ~ ., data = training, method = 'rf', trControl = modelControl )
+predictedClasse   <- predict(modFit, testing)
+testResults       <- confusionMatrix(testing$classe, predictedClasse)
+estAccuracy <- testResults$overall[1]
+estKappa    <- testResults$overall[2]
+
+# This is not printed to console to better respect the Coursera Honor Code.  For reproducibility purposes, the code is shown here how the test predictions are generated.
+testPrediction <- predict(modFit, testData)
+
+
+```
+### Results
+
+The results of the model indicate excellent predictive ability against the 20 sample test set provided.  The output of the `confusionMatrix()` indicates that the accuracy of the model is `r estAccuracy` with an out of sample error rate of `r 1 - estAccuracy`.  The output of the confusion matrix can be seen below.
+
+``` {r confusionMatrix()}
+print(testResults)
+```
